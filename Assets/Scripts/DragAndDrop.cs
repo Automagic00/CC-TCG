@@ -13,6 +13,7 @@ public class DragAndDrop : MonoBehaviour
     public DropZone previousDropZone;
     public MotionHandle currentMotion;
     public Camera mainCamera;
+    private bool isDragEnabled = true;
 
     private void Start()
     {
@@ -37,63 +38,70 @@ public class DragAndDrop : MonoBehaviour
 
     private void OnMouseDown()
     {
-        Debug.Log("MouseDown");
-        //Cancel LMotion to Prevent Jitter
-        if (currentMotion.IsActive())
+        if (isDragEnabled)
         {
-            currentMotion.Cancel();
-        }
-        held = true;
-        transform.SetParent(null);
-        //Vector3 worldPoint = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, -mainCamera.transform.position.z + Input.mousePosition.z));
-        //transform.position = new Vector3(worldPoint.x, worldPoint.y, 0.0f);
+            Debug.Log("MouseDown");
+            //Cancel LMotion to Prevent Jitter
+            if (currentMotion.IsActive())
+            {
+                currentMotion.Cancel();
+            }
+            held = true;
+            transform.SetParent(null);
+            //Vector3 worldPoint = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, -mainCamera.transform.position.z + Input.mousePosition.z));
+            //transform.position = new Vector3(worldPoint.x, worldPoint.y, 0.0f);
 
-        float planeY = 0;
-        Transform draggingObject = transform;
-        Plane plane = new Plane(Vector3.up, Vector3.up * planeY);
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        float distance;
-        if (plane.Raycast(ray,out distance))
-        {
-            draggingObject.position = ray.GetPoint(distance);
-            Debug.DrawRay(ray.origin, ray.direction);
+            float planeY = 0;
+            Transform draggingObject = transform;
+            Plane plane = new Plane(Vector3.up, Vector3.up * planeY);
+            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+            float distance;
+            if (plane.Raycast(ray, out distance))
+            {
+                draggingObject.position = ray.GetPoint(distance);
+                Debug.DrawRay(ray.origin, ray.direction);
+            }
         }
-
     }
 
     private void OnMouseUp()
     {
-        held = false;
-        DetermineDropZone();
+        if (held)
+        {
+            held = false;
+            DetermineDropZone();
+        }
     }
 
     private void OnMouseDrag()
     {
-        //Vector3 worldPoint = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, -mainCamera.transform.position.z + Input.mousePosition.z));
-        //transform.position = new Vector3(worldPoint.x,worldPoint.y,0.0f);
-        
-        float planeY = 0;
-        Transform draggingObject = transform;
-        Plane plane = new Plane(Vector3.forward, Vector3.up * planeY);
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        float distance;
-        if (plane.Raycast(ray, out distance))
+        if (isDragEnabled)
         {
-            draggingObject.position = ray.GetPoint(distance);
-            Debug.DrawLine(ray.origin, ray.GetPoint(distance), Color.green);
-            Debug.Log(distance);
+            //Vector3 worldPoint = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, -mainCamera.transform.position.z + Input.mousePosition.z));
+            //transform.position = new Vector3(worldPoint.x,worldPoint.y,0.0f);
+
+            float planeY = 0;
+            Transform draggingObject = transform;
+            Plane plane = new Plane(Vector3.forward, Vector3.up * planeY);
+            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+            float distance;
+            if (plane.Raycast(ray, out distance))
+            {
+                draggingObject.position = ray.GetPoint(distance);
+                Debug.DrawLine(ray.origin, ray.GetPoint(distance), Color.green);
+                Debug.Log(distance);
+            }
         }
     }
 
     private void DetermineDropZone()
     {
         DropZone closestDropZone = null;
-        float closestDistance = -1;
+
 
 
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
-        float distance;
         int layerMask = LayerMask.GetMask("Dropzone");
         Debug.Log(layerMask);
         if (Physics.Raycast(ray,out hit, Mathf.Infinity, layerMask, QueryTriggerInteraction.Collide))
@@ -109,41 +117,42 @@ public class DragAndDrop : MonoBehaviour
         }
         Debug.DrawLine(ray.origin, ray.GetPoint(100), Color.red, 10f);
         Debug.DrawRay(ray.origin, ray.direction, Color.blue, 10f);
-        //Check if there are valid dropzones in list, if not return to previous dropzone
-        /*if (!potentialDropZones.Any())
-        {
-            closestDropZone = previousDropZone;
-        }
-        else
-        {
-            //Check Which Dropzone is Closest
-            foreach (var zone in potentialDropZones)
-            {
-                float distToTest = Vector3.Distance(zone.transform.position, this.transform.position);
-                if (closestDropZone == null || distToTest < closestDistance)
-                {
-                    closestDropZone = zone;
-                    closestDistance = distToTest;
-                }
-            }
-        }*/
 
+        SetDropZone(closestDropZone,false);
+        
+    }
+
+    public void SetDropZone(DropZone targetDropZone, bool forceWhenDisabled, float duration = 0.6f)
+    {
+        //Go to previous zone if disabled and not forced
+        if (!forceWhenDisabled && !targetDropZone.dropZoneActive)
+        {
+            targetDropZone = previousDropZone;
+        }
 
         //Move to transform
-        if (closestDropZone.isControlTransform)
+        if (targetDropZone.isControlTransform)
         {
-            this.transform.parent = closestDropZone.transform;
-            currentMotion = LMotion.Create(transform.localPosition, Vector3.zero, 0.6f).WithEase(Ease.OutExpo).BindToLocalPosition(transform);
-            
+            this.transform.parent = targetDropZone.transform;
+            if (currentMotion != null && currentMotion.IsPlaying())
+            {
+                currentMotion.Cancel();
+            }
+            currentMotion = LMotion.Create(transform.localPosition, Vector3.zero, duration).WithEase(Ease.OutExpo).BindToLocalPosition(transform);
+
             //Only Current Dropzone in Potential Drop Zones
             potentialDropZones.Clear();
-            potentialDropZones.Add(closestDropZone);
+            potentialDropZones.Add(targetDropZone);
         }
         else
         {
-            this.transform.parent = closestDropZone.transform;
+            this.transform.parent = targetDropZone.transform;
         }
-        previousDropZone = closestDropZone;
-        
+        previousDropZone = targetDropZone;
+    }
+
+    public void SetDragEnabled(bool enabled)
+    {
+        isDragEnabled = enabled;
     }
 }

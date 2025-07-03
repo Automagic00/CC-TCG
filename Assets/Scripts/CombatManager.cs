@@ -47,6 +47,10 @@ public class CombatManager : MonoBehaviour
 
     [SerializeField]
     private GameObject playZonePrefab;
+
+    [SerializeField]
+    private DropZone discardZone;
+
     public int columns = 4;
     public float width = 10;
 
@@ -123,7 +127,10 @@ public class CombatManager : MonoBehaviour
         }
         //StopAllCoroutines();
     }
-
+    public void CardDied(Card card)
+    {
+        card.GetComponent<DragAndDrop>().SetDropZone(discardZone, true);
+    }
     private void CreatePlayZoneRow(playZoneLocation location, float rowHieghtOffset)
     {
         //Distance between each instance

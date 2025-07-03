@@ -8,7 +8,7 @@ public class PlayZone : MonoBehaviour
     {
         if (gameObject.GetComponentInChildren<Card>() != null)
         {
-            gameObject.GetComponentInChildren<Card>().Attacked(damage);
+            StartCoroutine(gameObject.GetComponentInChildren<Card>().Attacked(damage));
         }
     }
     public void Heal(int healValue)

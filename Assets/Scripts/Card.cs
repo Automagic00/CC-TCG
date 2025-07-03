@@ -75,11 +75,24 @@ public class Card : MonoBehaviour
 
     }
 
-    public void Attacked(int damage)
+    public IEnumerator Attacked(int damage)
     {
         currentHP -= damage;
         hpText.text = currentHP.ToString();
-        LMotion.Shake.Create(0f, 8f, 0.5f).BindToEulerAnglesZ(transform);
+        currentMotion = LMotion.Shake.Create(0f, 8f, 0.5f).BindToEulerAnglesZ(transform);
+        while (currentMotion.IsPlaying())
+        {
+            yield return null;
+        }
+        if (currentHP <= 0)
+        {
+            Die();
+        }
+    }
+
+    public void Die ()
+    {
+        combatManager.CardDied(this);
     }
     public void Healed(int health)
     {

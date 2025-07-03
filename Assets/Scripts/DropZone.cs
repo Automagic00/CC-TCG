@@ -7,6 +7,8 @@ using LitMotion.Extensions;
 public class DropZone : MonoBehaviour
 {
     public bool isControlTransform = false;
+    public bool holdOneCardOnly = true;
+    public bool dropZoneActive = true;
     private Camera _mainCam;
 
     [SerializeField]
